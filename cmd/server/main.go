@@ -54,6 +54,7 @@ func main() {
     commentService := service.NewCommentService(commentRepo)
     fileRepo := repository.NewFileRepository(gormDB)
     fileService := service.NewFileService(fileRepo)
+    adminService := service.NewAdminService(gormDB)
 
     // 初始化 Gin 与基础中间件
     r := gin.New()
@@ -94,6 +95,12 @@ func main() {
     apiAuth.POST("/files", fileH.Upload)
     api.GET("/files/:id", fileH.Get)
     apiAuth.DELETE("/files/:id", fileH.Delete)
+
+    // 管理员功能与统计
+    adminH := server.NewAdminHandler(adminService)
+    admin := apiAuth.Group("/admin")
+    admin.Use(server.AdminOnly())
+    admin.GET("/stats", adminH.Stats)
 
     // 注册 Swagger UI 与 OpenAPI JSON（开发环境使用）
     spec, _ := os.ReadFile("docs/openapi.json")
