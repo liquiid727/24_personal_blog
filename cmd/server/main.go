@@ -68,6 +68,8 @@ func main() {
     // 初始化 Gin 与基础中间件
     r := gin.New()
     r.Use(gin.Recovery())
+    // CORS 可按需配置具体域名（示例为空表示不启用严格校验）
+    r.Use(server.CORS(""))
 
     // 路由前缀与认证路由
     api := r.Group("/api/v1")
@@ -83,7 +85,8 @@ func main() {
 
     // 文章路由（部分需鉴权），支持 CRUD、发布与浏览量递增
     postH := server.NewPostHandler(postService)
-    apiAuth.POST("/posts", postH.Create)
+    // 登录、创建评论、发布等敏感操作做速率限制
+    apiAuth.POST("/posts", server.RateLimit(30, time.Minute), postH.Create)
     apiAuth.PUT("/posts/:id", postH.Update)
     apiAuth.DELETE("/posts/:id", postH.Delete)
     api.GET("/posts", postH.List)
@@ -93,9 +96,9 @@ func main() {
 
     // 评论路由（创建/更新/删除需鉴权），列表提供树形结构
     commentH := server.NewCommentHandler(commentService)
-    apiAuth.POST("/posts/:id/comments", commentH.Create)
-    apiAuth.PUT("/comments/:id", commentH.Update)
-    apiAuth.DELETE("/comments/:id", commentH.Delete)
+    apiAuth.POST("/posts/:id/comments", server.RateLimit(60, time.Minute), commentH.Create)
+    apiAuth.PUT("/comments/:id", server.RateLimit(60, time.Minute), commentH.Update)
+    apiAuth.DELETE("/comments/:id", server.RateLimit(60, time.Minute), commentH.Delete)
     api.GET("/posts/:id/comments", commentH.ListTree)
 
     // 文件上传与管理
