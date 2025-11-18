@@ -16,6 +16,7 @@ import (
     category "go_blog/internal/domain/category"
     comment "go_blog/internal/domain/comment"
     file "go_blog/internal/domain/file"
+    "go_blog/internal/migrations"
 )
 
 // Open 根据配置选择数据库驱动并返回 *gorm.DB
@@ -34,7 +35,7 @@ func Open(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 
 // AutoMigrate 执行所有领域模型的自动迁移
 func AutoMigrate(db *gorm.DB) error {
-    return db.AutoMigrate(
+    if err := db.AutoMigrate(
         &user.User{},
         &post.Post{},
         &tag.Tag{},
@@ -43,5 +44,9 @@ func AutoMigrate(db *gorm.DB) error {
         &post.PostCategory{},
         &comment.Comment{},
         &file.File{},
-    )
+    ); err != nil { return err }
+    // Run driver-specific migrations
+    dial := db.Dialector.Name()
+    if err := migrations.ApplyMigrations(db, dial); err != nil { return err }
+    return nil
 }

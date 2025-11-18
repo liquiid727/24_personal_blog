@@ -6,7 +6,7 @@ import (
 )
 
 func SetRedis(c *gin.Context, rdb *redis.Client) { c.Set("rdb", rdb) }
-func getRedis(c *gin.Context) *redis.Client {
+func GetRedis(c *gin.Context) *redis.Client {
 	v, ok := c.Get("rdb")
 	if !ok {
 		return nil

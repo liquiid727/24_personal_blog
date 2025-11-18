@@ -25,10 +25,10 @@ type PostRepository interface {
     IncrementViews(id uint) error
 }
 
-type postRepository struct{ db *gorm.DB }
+type postRepository struct{ db *gorm.DB; driver string }
 
 // NewPostRepository 创建文章仓储实现
-func NewPostRepository(db *gorm.DB) PostRepository { return &postRepository{db: db} }
+func NewPostRepository(db *gorm.DB) PostRepository { return &postRepository{db: db, driver: db.Dialector.Name()} }
 
 // Create 新增文章
 func (r *postRepository) Create(p *post.Post) error { return r.db.Create(p).Error }
@@ -53,8 +53,14 @@ func (r *postRepository) List(filter PostListFilter, page, size int) ([]post.Pos
     if filter.AuthorID != nil { q = q.Where("author_id = ?", *filter.AuthorID) }
     if filter.Status != "" { q = q.Where("status = ?", filter.Status) }
     if s := strings.TrimSpace(filter.Query); s != "" {
-        like := "%" + s + "%"
-        q = q.Where("title LIKE ? OR content LIKE ?", like, like)
+        if r.driver == "postgres" {
+            // Use fulltext search
+            q = q.Where("to_tsvector('english', coalesce(title,'') || ' ' || coalesce(content,'')) @@ plainto_tsquery('english', ?)", s)
+            q = q.Order("ts_rank(to_tsvector('english', coalesce(title,'') || ' ' || coalesce(content,'')), plainto_tsquery('english', '" + s + "')) DESC, id DESC")
+        } else {
+            like := "%" + s + "%"
+            q = q.Where("title LIKE ? OR content LIKE ?", like, like)
+        }
     }
     var total int64
     if err := q.Count(&total).Error; err != nil { return nil, 0, err }
