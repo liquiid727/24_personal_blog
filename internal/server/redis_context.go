@@ -1,3 +1,9 @@
+// File: internal/server/redis_context.go
+// Purpose: Internal helpers to attach Redis client to Gin context.
+// Author: Go Blog Team
+// Created: 2025-11-18
+// Last Modified: 2025-11-18
+// Description: Lowercase variants setRedis/getRedis used within server package.
 package server
 
 import (

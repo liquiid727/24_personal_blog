@@ -1,4 +1,9 @@
-// 评论服务：实现评论的创建、更新、删除与树形返回逻辑
+// File: internal/service/comment_service.go
+// Purpose: Comment business service implementing creation, update, deletion and tree building.
+// Author: Go Blog Team
+// Created: 2025-11-18
+// Last Modified: 2025-11-18
+// Description: Encapsulates authorization checks and builds hierarchical comment trees per post.
 package service
 
 import (
@@ -7,7 +12,12 @@ import (
     "go_blog/internal/repository"
 )
 
-// CommentService 定义评论业务接口
+// CommentService 评论业务接口
+// Methods:
+// - Create: 新建评论（可选父评论）
+// - Update: 作者或管理员更新内容
+// - Delete: 作者或管理员删除
+// - ListTree: 返回树形结构
 type CommentService interface {
     Create(postID, userID uint, parentID *uint, content string) (*comment.Comment, error)
     Update(id uint, userID uint, content string, isAdmin bool) (*comment.Comment, error)
@@ -52,7 +62,9 @@ type CommentNode struct {
     Children []CommentNode
 }
 
-// ListTree 构建并返回指定文章的评论树
+// ListTree 构建评论树
+// Algorithm: 先按 ParentID 聚合，再以根评论为入口递归构建树；复杂度约 O(n)
+// Returns: 评论树节点数组；错误时返回存储访问错误
 func (s *commentService) ListTree(postID uint) ([]CommentNode, error) {
     items, err := s.repo.ListByPost(postID)
     if err != nil { return nil, err }

@@ -1,3 +1,9 @@
+// File: internal/server/redisctx.go
+// Purpose: Helpers to attach Redis client to Gin context.
+// Author: Go Blog Team
+// Created: 2025-11-18
+// Last Modified: 2025-11-18
+// Description: Provides SetRedis/GetRedis for middleware and handlers.
 package server
 
 import (
