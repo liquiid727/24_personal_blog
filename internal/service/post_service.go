@@ -10,6 +10,9 @@ import (
     category "go_blog/internal/domain/category"
     "go_blog/internal/repository"
     "go_blog/pkg/utils"
+    "go_blog/internal/cache"
+    "context"
+    "github.com/redis/go-redis/v9"
 )
 
 // PostService 定义文章业务接口
@@ -24,10 +27,14 @@ type PostService interface {
 }
 
 // postService 文章服务实现
-type postService struct{ repo repository.PostRepository }
+type postService struct{ repo repository.PostRepository; rdb *redis.Client }
 
 // NewPostService 创建文章服务
 func NewPostService(r repository.PostRepository) PostService { return &postService{repo: r} }
+
+func NewPostServiceWithCache(r repository.PostRepository, rdb *redis.Client) PostService {
+    return &postService{repo: r, rdb: rdb}
+}
 
 // Create 创建文章，自动生成 slug，已发布状态记录发布时间
 func (s *postService) Create(authorID uint, title, content string, status string, tagIDs []uint, categoryIDs []uint) (*post.Post, error) {
@@ -67,6 +74,7 @@ func (s *postService) Delete(id uint, requester uint, isAdmin bool) error {
 
 // Get 获取文章详情
 func (s *postService) Get(id uint) (*post.Post, error) { return s.repo.FindByID(id) }
+// If Redis is enabled, add cached views to DB value and flush periodically
 
 // List 分页查询文章列表
 func (s *postService) List(filter repository.PostListFilter, page, size int) ([]post.Post, int64, error) {
@@ -85,4 +93,9 @@ func (s *postService) Publish(id uint, requester uint, isAdmin bool) (*post.Post
 }
 
 // IncrementViews 递增浏览量
-func (s *postService) IncrementViews(id uint) error { return s.repo.IncrementViews(id) }
+func (s *postService) IncrementViews(id uint) error {
+    if s.rdb != nil {
+        return cache.IncrViews(context.Background(), s.rdb, id)
+    }
+    return s.repo.IncrementViews(id)
+}

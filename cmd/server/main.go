@@ -14,6 +14,8 @@ import (
     "go_blog/internal/server"
     "go_blog/internal/service"
     "go_blog/internal/repository"
+    "go_blog/internal/cache"
+    "github.com/redis/go-redis/v9"
 )
 
 // main 初始化各基础设施并启动服务
@@ -48,7 +50,14 @@ func main() {
     userService := service.NewUserService(userRepo, []byte(cfg.JWTSecret), time.Duration(cfg.JWTTTL)*time.Minute)
     // 文章模块：仓储与服务
     postRepo := repository.NewPostRepository(gormDB)
-    postService := service.NewPostService(postRepo)
+    var postService service.PostService
+    var rdb *redis.Client
+    if cfg.RedisAddr != "" {
+        rdb = cache.New(cfg.RedisAddr, cfg.RedisPass, cfg.RedisDB)
+        postService = service.NewPostServiceWithCache(postRepo, rdb)
+    } else {
+        postService = service.NewPostService(postRepo)
+    }
     // 评论模块：仓储与服务
     commentRepo := repository.NewCommentRepository(gormDB)
     commentService := service.NewCommentService(commentRepo)
@@ -107,6 +116,9 @@ func main() {
     server.RegisterSwaggerRoutes(r, spec)
 
     // 启动 HTTP 服务器
+    if rdb != nil {
+        r.Use(func(c *gin.Context) { server.SetRedis(c, rdb); c.Next() })
+    }
     s := &http.Server{Addr: ":" + cfg.AppPort, Handler: r}
     if err := s.ListenAndServe(); err != nil {
         logger.Fatal("server error", zap.Error(err))

@@ -4,11 +4,13 @@ package server
 import (
     "net/http"
     "strconv"
+    "context"
 
     "github.com/gin-gonic/gin"
     h "go_blog/internal/transport/http"
     "go_blog/internal/repository"
     "go_blog/internal/service"
+    "go_blog/internal/cache"
 )
 
 // PostHandler 封装文章相关的 HTTP 处理
@@ -52,6 +54,11 @@ func (ph *PostHandler) Get(c *gin.Context) {
     id, _ := strconv.Atoi(c.Param("id"))
     p, err := ph.svc.Get(uint(id))
     if err != nil { h.Error(c, http.StatusNotFound, 5, "not found"); return }
+    // 合并 Redis 视图计数
+    if rdb := getRedis(c); rdb != nil {
+        v, _ := cache.GetViews(context.Background(), rdb, uint(id))
+        p.Views += v
+    }
     h.OK(c, p)
 }
 
