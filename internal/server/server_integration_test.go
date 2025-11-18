@@ -67,11 +67,17 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 
     postH := NewPostHandler(postSvc)
     apiAuth.POST("/posts", postH.Create)
+    apiAuth.PUT("/posts/:id", postH.Update)
+    apiAuth.DELETE("/posts/:id", postH.Delete)
+    apiAuth.POST("/posts/:id/publish", postH.Publish)
     api.GET("/posts", postH.List)
     api.GET("/posts/:id", postH.Get)
+    api.POST("/posts/:id/views/incr", postH.IncrViews)
 
     commentH := NewCommentHandler(commentSvc)
     apiAuth.POST("/posts/:id/comments", commentH.Create)
+    apiAuth.PUT("/comments/:id", commentH.Update)
+    apiAuth.DELETE("/comments/:id", commentH.Delete)
     api.GET("/posts/:id/comments", commentH.ListTree)
     return r
 }
@@ -109,9 +115,39 @@ func TestAuthPostCommentFlow(t *testing.T) {
     if rr.Code != http.StatusOK { t.Fatalf("create post failed: %d", rr.Code) }
 
     rr = httptest.NewRecorder()
+    upb := h.PostUpdateRequest{Title: "Hello Updated", Content: "updated", Status: "draft"}
+    b, _ = json.Marshal(upb)
+    req = httptest.NewRequest(http.MethodPut, "/api/v1/posts/1", bytes.NewReader(b))
+    req.Header.Set("Authorization", "Bearer "+token)
+    req.Header.Set("Content-Type", "application/json")
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("update post failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
     req = httptest.NewRequest(http.MethodGet, "/api/v1/posts?page=1&page_size=10", nil)
     r.ServeHTTP(rr, req)
     if rr.Code != http.StatusOK { t.Fatalf("list posts failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/api/v1/posts/1/publish", nil)
+    req.Header.Set("Authorization", "Bearer "+token)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("publish post failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/api/v1/posts/1/views/incr", nil)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("incr views failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodPost, "/api/v1/posts/1/views/incr", nil)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("incr views 2 failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodGet, "/api/v1/posts/1", nil)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("get post failed: %d", rr.Code) }
 
     rr = httptest.NewRecorder()
     cb := h.CommentCreateRequest{Content: "nice"}
@@ -123,7 +159,33 @@ func TestAuthPostCommentFlow(t *testing.T) {
     if rr.Code != http.StatusOK { t.Fatalf("create comment failed: %d", rr.Code) }
 
     rr = httptest.NewRecorder()
+    cub := h.CommentUpdateRequest{Content: "updated comment"}
+    b, _ = json.Marshal(cub)
+    req = httptest.NewRequest(http.MethodPut, "/api/v1/comments/1", bytes.NewReader(b))
+    req.Header.Set("Authorization", "Bearer "+token)
+    req.Header.Set("Content-Type", "application/json")
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("update comment failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
     req = httptest.NewRequest(http.MethodGet, "/api/v1/posts/1/comments", nil)
     r.ServeHTTP(rr, req)
     if rr.Code != http.StatusOK { t.Fatalf("list comments failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodDelete, "/api/v1/comments/1", nil)
+    req.Header.Set("Authorization", "Bearer "+token)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("delete comment failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodDelete, "/api/v1/posts/1", nil)
+    req.Header.Set("Authorization", "Bearer "+token)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK { t.Fatalf("delete post failed: %d", rr.Code) }
+
+    rr = httptest.NewRecorder()
+    req = httptest.NewRequest(http.MethodGet, "/api/v1/posts/1", nil)
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusNotFound { t.Fatalf("expected 404 after delete, got: %d", rr.Code) }
 }
