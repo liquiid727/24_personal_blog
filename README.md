@@ -1,10 +1,8 @@
-# Go-Blog 高性能博客系统
+#  Go_blog
 
-![CI](https://github.com/your-org/go_blog/actions/workflows/ci.yml/badge.svg)  
-![Coverage](https://img.shields.io/codecov/c/github/your-org/go_blog)  
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Go-Blog 是一个基于 Go + Gin + PostgreSQL/MySQL 构建的现代化博客系统，支持用户注册登录、文章发布、评论回复、文件上传、全文检索与管理员统计。项目采用分层架构（Handler → Service → Repository → Domain），内置 JWT 认证、Redis 缓存、CORS 与限流中间件，支持 Docker 一键部署，提供完整的 OpenAPI 文档与单元测试覆盖，适合个人博客或团队知识库场景。
+Go-Blog 是一个基于 Go + Gin + PostgreSQL/MySQL 构建的现代化博客系统，支持用户注册登录、文章发布、评论回复、文件上传、全文检索与管理员统计。项目采用分层架构（Handler → Service → Repository → Domain），内置 JWT 认证、Redis 缓存、CORS 与限流中间件，支持 Docker 一键部署，提供完整的 OpenAPI 文档与单元测试覆盖
 
 ## 技术栈
 
